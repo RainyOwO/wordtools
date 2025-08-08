@@ -17,10 +17,10 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import sun.misc.BASE64Decoder;
 
 import java.io.*;
 import java.math.BigInteger;
+import java.util.Base64;
 import java.util.List;
 
 /**
@@ -68,7 +68,7 @@ public class HtmlToWord {
                     case "imgbase64":
                         String base64chart = em.attr("src");
                         String base64 = base64chart.substring(base64chart.indexOf(";base64,") + 8);
-                        addImageToPackage(wordMLPackage, new BASE64Decoder().decodeBuffer(base64));
+                        addImageToPackage(wordMLPackage, Base64.getDecoder().decode(base64));
                         break;
                     case "table":
                         Tbl table = addTable(em);
