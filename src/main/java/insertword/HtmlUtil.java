@@ -12,6 +12,9 @@ import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 import java.io.*;
+import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
+import java.nio.file.Files;
 
 /**
  * Html工具类
@@ -60,12 +63,40 @@ public class HtmlUtil {
                         break;
                     case "imgurl":
                         String url = em.attr("src");
-                        InputStream inputStream = new FileInputStream(url);
-                        XWPFParagraph imgurlparagraph = doc.insertNewParagraph(xmlCursor);
-                        //居中
-                        ParagraphStyleUtil.setImageCenter(imgurlparagraph);
-                        imgurlparagraph.createRun().addPicture(inputStream,XWPFDocument.PICTURE_TYPE_PNG,"图片.jpeg", Units.toEMU(200),Units.toEMU(200));
-                        closeStream(inputStream);
+                        File imageFile = new File(url);
+                        
+                        // 读取图片获取原始尺寸
+                        BufferedImage bimg = ImageIO.read(imageFile);
+                        int originalWidth = bimg.getWidth();
+                        int originalHeight = bimg.getHeight();
+
+                        // 定义页面最大宽度 (单位: 磅)
+                        int maxWidth = 450;
+                        int newWidth = originalWidth;
+                        int newHeight = originalHeight;
+
+                        // 如果图片过宽，则按比例缩放
+                        if (originalWidth > maxWidth) {
+                            double ratio = (double) maxWidth / originalWidth;
+                            newWidth = maxWidth;
+                            newHeight = (int) (originalHeight * ratio);
+                        }
+
+                        try (InputStream inputStream = new FileInputStream(imageFile)) {
+                            XWPFParagraph imgurlparagraph = doc.insertNewParagraph(xmlCursor);
+                            //居中
+                            ParagraphStyleUtil.setImageCenter(imgurlparagraph);
+                            // 根据文件扩展名动态确定图片类型
+                            int imageType = XWPFDocument.PICTURE_TYPE_PNG; // 默认
+                            String lowerUrl = url.toLowerCase();
+                            if (lowerUrl.endsWith(".jpeg") || lowerUrl.endsWith(".jpg")) {
+                                imageType = XWPFDocument.PICTURE_TYPE_JPEG;
+                            } else if (lowerUrl.endsWith(".gif")) {
+                                imageType = XWPFDocument.PICTURE_TYPE_GIF;
+                            }
+                            // 使用计算出的新尺寸插入图片
+                            imgurlparagraph.createRun().addPicture(inputStream, imageType, imageFile.getName(), Units.toEMU(newWidth), Units.toEMU(newHeight));
+                        }
                         break;
                     case "imgbase64":
                         break;
