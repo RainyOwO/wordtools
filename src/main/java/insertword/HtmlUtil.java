@@ -11,6 +11,8 @@ import org.jsoup.select.Elements;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.*;
 
 /**
@@ -61,11 +63,36 @@ public class HtmlUtil {
                     case "imgurl":
                         String url = em.attr("src");
                         InputStream inputStream = new FileInputStream(url);
+
+                        // 因为inputStream不支持mark/reset, 所以我们先读到内存里
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        byte[] buffer = new byte[1024];
+                        int len;
+                        while ((len = inputStream.read(buffer)) > -1 ) {
+                            baos.write(buffer, 0, len);
+                        }
+                        baos.flush();
+
+                        InputStream is1 = new ByteArrayInputStream(baos.toByteArray());
+                        InputStream is2 = new ByteArrayInputStream(baos.toByteArray());
+
+                        // 获取图片原始大小
+                        BufferedImage bi = ImageIO.read(is1);
+                        int width = bi.getWidth();
+                        int height = bi.getHeight();
+
+                        // 图片最大宽度设置为400，过大则等比缩放
+                        int maxWidth = 400;
+                        if (width > maxWidth) {
+                            height = (int) (height * ((double) maxWidth / width));
+                            width = maxWidth;
+                        }
+
                         XWPFParagraph imgurlparagraph = doc.insertNewParagraph(xmlCursor);
                         //居中
                         ParagraphStyleUtil.setImageCenter(imgurlparagraph);
-                        imgurlparagraph.createRun().addPicture(inputStream,XWPFDocument.PICTURE_TYPE_PNG,"图片.jpeg", Units.toEMU(200),Units.toEMU(200));
-                        closeStream(inputStream);
+                        imgurlparagraph.createRun().addPicture(is2, XWPFDocument.PICTURE_TYPE_PNG, "图片.jpeg", Units.toEMU(width), Units.toEMU(height));
+                        closeStream(inputStream, is1, is2, baos);
                         break;
                     case "imgbase64":
                         break;
